@@ -117,6 +117,10 @@ export function useHaydenStore() {
     ])
   );
 
+  const [isDemoConnected, setIsDemoConnected] = useState<boolean>(() =>
+    loadFromStorage('hayden_demo_connected', false)
+  );
+
   // Sync state when other components update
   useEffect(() => {
     const handleUpdate = () => {
@@ -124,12 +128,23 @@ export function useHaydenStore() {
       setLpPositions(loadFromStorage('hayden_lp_positions', DEFAULT_LP_POSITIONS));
       setCustomPools(loadFromStorage('hayden_custom_pools', []));
       setTransactions(loadFromStorage('hayden_txs', []));
+      setIsDemoConnected(loadFromStorage('hayden_demo_connected', false));
     };
 
     listeners.add(handleUpdate);
     return () => {
       listeners.delete(handleUpdate);
     };
+  }, []);
+
+  const connectDemoWallet = useCallback(() => {
+    saveToStorage('hayden_demo_connected', true);
+    notify();
+  }, []);
+
+  const disconnectDemoWallet = useCallback(() => {
+    saveToStorage('hayden_demo_connected', false);
+    notify();
   }, []);
 
   const getBalance = useCallback(
@@ -297,6 +312,9 @@ export function useHaydenStore() {
     lpPositions,
     customPools,
     transactions,
+    isDemoConnected,
+    connectDemoWallet,
+    disconnectDemoWallet,
     getBalance,
     executeSwap,
     addLiquidity,

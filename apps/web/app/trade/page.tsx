@@ -3,8 +3,10 @@
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Settings2, ArrowUpDown, Info, ChevronDown, ChevronUp, Zap, RotateCcw } from 'lucide-react';
+import { Settings2, ArrowUpDown, Info, ChevronDown, ChevronUp, Zap, RotateCcw, Wallet, Sparkles } from 'lucide-react';
 import type { Asset, Route, TxState } from '@nexora/shared';
+import { useAccount } from 'wagmi';
+import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { buildAssets, getMarkets } from '@nexora/sdk';
 import { findRoutes, selectBestRoute } from '@nexora/sdk';
 import { SwapInput } from '@/components/ui/SwapInput';
@@ -21,7 +23,17 @@ const SLIPPAGE_OPTIONS = [0.1, 0.5, 1.0, 2.0];
 
 function TradeContent() {
   const searchParams = useSearchParams();
-  const { getBalance, executeSwap, resetBalances } = useHaydenStore();
+  const { isConnected } = useAccount();
+  const { openConnectModal } = useConnectModal();
+  const {
+    getBalance,
+    executeSwap,
+    resetBalances,
+    isDemoConnected,
+    connectDemoWallet,
+  } = useHaydenStore();
+
+  const isWalletActive = isConnected || isDemoConnected;
 
   const [assets, setAssets] = useState<Asset[]>([]);
   const [tokenIn, setTokenIn] = useState<Asset | undefined>();
@@ -134,7 +146,7 @@ function TradeContent() {
     : 0;
   const altRoutes = routes.slice(1, 4);
 
-  const walletBalanceBigInt = tokenIn
+  const walletBalanceBigInt = isWalletActive && tokenIn
     ? BigInt(Math.floor(currentBalance * 10 ** tokenIn.decimals))
     : undefined;
 
@@ -276,23 +288,44 @@ function TradeContent() {
                 )}
 
                 {/* Swap button */}
-                <button
-                  onClick={handleSwap}
-                  disabled={!bestRoute || loading || isInsufficientBalance}
-                  className={`btn-primary w-full py-4 text-base ${isInsufficientBalance ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                  {loading
-                    ? 'Finding best route...'
-                    : !tokenIn || !tokenOut
-                    ? 'Select tokens'
-                    : !amountIn
-                    ? 'Enter amount'
-                    : isInsufficientBalance
-                    ? `Insufficient ${tokenIn.symbol} balance`
-                    : !bestRoute
-                    ? 'No route found'
-                    : `Swap ${tokenIn.symbol} → ${tokenOut?.symbol}`}
-                </button>
+                {!isWalletActive ? (
+                  <div className="space-y-2 pt-1">
+                    <button
+                      onClick={() => openConnectModal?.()}
+                      type="button"
+                      className="btn-primary w-full py-4 text-base flex items-center justify-center gap-2 font-semibold shadow-lg hover:scale-[1.01] transition-transform"
+                    >
+                      <Wallet size={18} />
+                      Connect Wallet to Trade
+                    </button>
+                    <button
+                      onClick={connectDemoWallet}
+                      type="button"
+                      className="w-full text-center text-xs py-1 transition-colors text-nexora-blue hover:underline flex items-center justify-center gap-1.5"
+                    >
+                      <Sparkles size={12} />
+                      Or connect demo sandbox wallet
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleSwap}
+                    disabled={!bestRoute || loading || isInsufficientBalance}
+                    className={`btn-primary w-full py-4 text-base ${isInsufficientBalance ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    {loading
+                      ? 'Finding best route...'
+                      : !tokenIn || !tokenOut
+                      ? 'Select tokens'
+                      : !amountIn
+                      ? 'Enter amount'
+                      : isInsufficientBalance
+                      ? `Insufficient ${tokenIn.symbol} balance`
+                      : !bestRoute
+                      ? 'No route found'
+                      : `Swap ${tokenIn.symbol} → ${tokenOut?.symbol}`}
+                  </button>
+                )}
               </div>
             </div>
           </div>

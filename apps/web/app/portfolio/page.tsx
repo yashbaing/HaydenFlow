@@ -9,16 +9,23 @@ import { AssetTypeBadge, RiskBadge, PoolTypeBadge, CorrelationBadge } from '@/co
 import { KpiCard } from '@/components/ui/KpiCard';
 import { formatUSD, formatPercent } from '@/lib/utils';
 import { useAccount } from 'wagmi';
+import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { WalletButton } from '@/components/layout/WalletButton';
-import { Wallet, TrendingUp, Layers, History, ExternalLink, ArrowRight } from 'lucide-react';
+import { Wallet, TrendingUp, Layers, History, ExternalLink, ArrowRight, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { useHaydenStore } from '@/lib/store';
 
 export default function PortfolioPage() {
   const { address, isConnected } = useAccount();
-  const { balances, lpPositions, transactions } = useHaydenStore();
+  const { openConnectModal } = useConnectModal();
+  const {
+    balances,
+    lpPositions,
+    transactions,
+    isDemoConnected,
+    connectDemoWallet,
+  } = useHaydenStore();
 
-  const [demoMode, setDemoMode] = useState(true);
   const [pools, setPools] = useState<Pool[]>([]);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [loading, setLoading] = useState(true);
@@ -30,6 +37,58 @@ export default function PortfolioPage() {
       setLoading(false);
     });
   }, []);
+
+  const isWalletActive = isConnected || isDemoConnected;
+
+  if (!isWalletActive) {
+    return (
+      <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center px-4 py-12">
+        <div
+          className="max-w-md w-full rounded-2xl p-8 text-center shadow-2xl"
+          style={{
+            backgroundColor: 'var(--nexora-surface)',
+            border: '1px solid var(--nexora-border)',
+          }}
+        >
+          <div
+            className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5"
+            style={{
+              backgroundColor: 'rgba(79, 142, 247, 0.1)',
+              border: '1px solid rgba(79, 142, 247, 0.25)',
+              color: 'var(--nexora-blue)',
+            }}
+          >
+            <Wallet size={32} />
+          </div>
+
+          <h2 className="text-xl font-bold mb-2" style={{ color: 'var(--nexora-text)' }}>
+            Connect Your Wallet
+          </h2>
+          <p className="text-sm mb-6 max-w-sm mx-auto" style={{ color: 'var(--nexora-text-muted)' }}>
+            Connect your Web3 wallet to manage token balances, track active LP positions, and monitor earned yield on HaydenFlow.
+          </p>
+
+          <div className="space-y-3">
+            <button
+              onClick={() => openConnectModal?.()}
+              className="btn-primary w-full py-3.5 text-sm font-semibold flex items-center justify-center gap-2 shadow-lg hover:scale-[1.01] transition-transform"
+            >
+              <Wallet size={16} />
+              Connect Web3 Wallet
+            </button>
+
+            <button
+              onClick={connectDemoWallet}
+              className="btn-ghost w-full py-3 text-sm flex items-center justify-center gap-2"
+            >
+              <Sparkles size={14} style={{ color: 'var(--nexora-blue)' }} />
+              <span>Explore Demo Trader Sandbox</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const effectiveAddress = isConnected
     ? address!

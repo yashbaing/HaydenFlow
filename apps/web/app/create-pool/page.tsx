@@ -10,13 +10,18 @@ import { AssetIcon } from '@/components/ui/AssetIcon';
 import { PoolTypeBadge, CorrelationBadge, RiskBadge } from '@/components/ui/Badges';
 import { TokenSelectModal } from '@/components/ui/TokenSelectModal';
 import { TransactionStatus } from '@/components/ui/TransactionStatus';
+import { useAccount } from 'wagmi';
+import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { formatUSD } from '@/lib/utils';
 import { useHaydenStore } from '@/lib/store';
-import { AlertTriangle, CheckCircle, ArrowRight } from 'lucide-react';
+import { AlertTriangle, CheckCircle, ArrowRight, Wallet, Sparkles } from 'lucide-react';
 
 export default function CreatePoolPage() {
   const router = useRouter();
-  const { getBalance, createPool } = useHaydenStore();
+  const { isConnected } = useAccount();
+  const { openConnectModal } = useConnectModal();
+  const { getBalance, createPool, isDemoConnected, connectDemoWallet } = useHaydenStore();
+  const isWalletActive = isConnected || isDemoConnected;
 
   const [assets, setAssets] = useState<Asset[]>([]);
   const [asset0, setAsset0] = useState<Asset | undefined>();
@@ -348,17 +353,38 @@ export default function CreatePoolPage() {
                   </div>
                 )}
 
-                <button
-                  onClick={handleCreatePool}
-                  disabled={!amount0 || !amount1 || parseFloat(amount0) <= 0 || isInsufficient}
-                  className={`btn-primary w-full py-4 text-sm font-semibold ${isInsufficient ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                  {isInsufficient
-                    ? 'Insufficient token balance'
-                    : !amount0 || !amount1
-                    ? 'Enter initial deposit amounts'
-                    : 'Create Pool & Add Liquidity'}
-                </button>
+                {!isWalletActive ? (
+                  <div className="space-y-2 pt-2">
+                    <button
+                      onClick={() => openConnectModal?.()}
+                      type="button"
+                      className="btn-primary w-full py-4 text-sm font-semibold flex items-center justify-center gap-2 shadow-lg hover:scale-[1.01] transition-transform"
+                    >
+                      <Wallet size={16} />
+                      Connect Wallet to Deploy Pool
+                    </button>
+                    <button
+                      onClick={connectDemoWallet}
+                      type="button"
+                      className="w-full text-center text-xs py-1 transition-colors text-nexora-blue hover:underline flex items-center justify-center gap-1.5"
+                    >
+                      <Sparkles size={12} />
+                      Or connect demo sandbox wallet
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleCreatePool}
+                    disabled={!amount0 || !amount1 || parseFloat(amount0) <= 0 || isInsufficient}
+                    className={`btn-primary w-full py-4 text-sm font-semibold ${isInsufficient ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    {isInsufficient
+                      ? 'Insufficient token balance'
+                      : !amount0 || !amount1
+                      ? 'Enter initial deposit amounts'
+                      : 'Create Pool & Add Liquidity'}
+                  </button>
+                )}
               </>
             )}
           </div>

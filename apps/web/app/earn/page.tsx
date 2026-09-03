@@ -10,9 +10,10 @@ import { PoolTypeBadge, CorrelationBadge, RiskBadge } from '@/components/ui/Badg
 import { KpiRow } from '@/components/ui/KpiCard';
 import { formatUSD } from '@/lib/utils';
 import { useAccount } from 'wagmi';
+import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { WalletButton } from '@/components/layout/WalletButton';
 import { TransactionStatus } from '@/components/ui/TransactionStatus';
-import { TrendingUp, Shield, Wallet, CheckCircle } from 'lucide-react';
+import { TrendingUp, Shield, Wallet, CheckCircle, Sparkles } from 'lucide-react';
 import { useHaydenStore } from '@/lib/store';
 import type { TxState } from '@nexora/shared';
 
@@ -26,8 +27,10 @@ interface PoolOpportunity {
 
 function EarnContent() {
   const { address, isConnected } = useAccount();
+  const { openConnectModal } = useConnectModal();
   const searchParams = useSearchParams();
-  const { getBalance, addLiquidity } = useHaydenStore();
+  const { getBalance, addLiquidity, isDemoConnected, connectDemoWallet } = useHaydenStore();
+  const isWalletActive = isConnected || isDemoConnected;
 
   const [pools, setPools] = useState<Pool[]>([]);
   const [assets, setAssets] = useState<Asset[]>([]);
@@ -330,17 +333,38 @@ function EarnContent() {
                     </div>
                   )}
 
-                  <button
-                    onClick={handleConfirmLiquidity}
-                    disabled={!amount0 || !amount1 || parseFloat(amount0) <= 0 || isInsufficient}
-                    className={`btn-primary w-full py-3 text-sm ${isInsufficient ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  >
-                    {isInsufficient
-                      ? 'Insufficient token balance'
-                      : !amount0 || !amount1
-                      ? 'Enter deposit amounts'
-                      : 'Confirm & Add Liquidity'}
-                  </button>
+                  {!isWalletActive ? (
+                    <div className="space-y-2 pt-1">
+                      <button
+                        onClick={() => openConnectModal?.()}
+                        type="button"
+                        className="btn-primary w-full py-3.5 text-sm flex items-center justify-center gap-2 font-semibold shadow-lg hover:scale-[1.01] transition-transform"
+                      >
+                        <Wallet size={16} />
+                        Connect Wallet to Add Liquidity
+                      </button>
+                      <button
+                        onClick={connectDemoWallet}
+                        type="button"
+                        className="w-full text-center text-xs py-1 transition-colors text-nexora-blue hover:underline flex items-center justify-center gap-1.5"
+                      >
+                        <Sparkles size={12} />
+                        Or connect demo sandbox wallet
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={handleConfirmLiquidity}
+                      disabled={!amount0 || !amount1 || parseFloat(amount0) <= 0 || isInsufficient}
+                      className={`btn-primary w-full py-3 text-sm ${isInsufficient ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      {isInsufficient
+                        ? 'Insufficient token balance'
+                        : !amount0 || !amount1
+                        ? 'Enter deposit amounts'
+                        : 'Confirm & Add Liquidity'}
+                    </button>
+                  )}
                 </div>
               </motion.div>
             ) : (
