@@ -1,8 +1,8 @@
-# NEXORA
+# HaydenFlow
 
 > **Programmable Liquidity for Tokenized Markets**
 
-Nexora is a decentralized liquidity and routing layer for tokenized assets that introduces **correlated-pair liquidity pools**.
+HaydenFlow is a decentralized liquidity and routing layer for tokenized assets that introduces **correlated-pair liquidity pools**.
 
 Traditional markets quote almost every asset against fiat/USD:
 - `NVDA / USDC`
@@ -10,7 +10,7 @@ Traditional markets quote almost every asset against fiat/USD:
 - `AMZN / USDC`
 - `QQQ / USDC`
 
-Nexora enables correlated-pair markets:
+HaydenFlow enables correlated-pair markets:
 - `NVDA / SPY`
 - `TSLA / SPY`
 - `AMZN / QQQ`
@@ -21,7 +21,7 @@ With deep bridge markets:
 - `ETH / USDC`
 - `BTC / USDC`
 
-Users can trade from USDC into any asset because the **Nexora Smart Router** automatically discovers and routes trades across the liquidity graph (e.g. `USDC → nSPY → nNVDA`). Correlated assets have lower relative volatility, reducing impermanent loss risk for passive liquidity providers and making AMMs significantly more capital-efficient.
+Users can trade from USDC into any asset because the **HaydenFlow Smart Router** automatically discovers and routes trades across the liquidity graph (e.g. `USDC → nSPY → nNVDA`). Correlated assets have lower relative volatility, reducing impermanent loss risk for passive liquidity providers and making AMMs significantly more capital-efficient.
 
 ---
 

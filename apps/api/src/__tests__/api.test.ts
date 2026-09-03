@@ -3,7 +3,7 @@ import http from 'http';
 import { createApp } from '../app';
 import { wsServer } from '../websocket/server';
 
-describe('Nexora Backend API Integration Tests', () => {
+describe('HaydenFlow Backend API Integration Tests', () => {
   let server: http.Server;
   let baseUrl: string;
 
@@ -33,7 +33,7 @@ describe('Nexora Backend API Integration Tests', () => {
     const res = await fetch(`${baseUrl}/health`);
     expect(res.status).toBe(200);
     const data = await res.json();
-    expect(data.service).toBe('nexora-backend');
+    expect(data.service).toBe('haydenflow-backend');
     expect(data.status).toBe('healthy');
   });
 

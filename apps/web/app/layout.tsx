@@ -18,12 +18,12 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Nexora — Programmable Liquidity for Tokenized Markets',
+  title: 'HaydenFlow — Programmable Liquidity for Tokenized Markets',
   description:
-    'Trade tokenized assets against what they actually move with. Nexora introduces correlated-pair liquidity for capital-efficient AMMs.',
-  keywords: 'DeFi, liquidity, correlated assets, AMM, tokenized equities, smart routing',
+    'Trade tokenized assets against what they actually move with. HaydenFlow introduces correlated-pair liquidity for capital-efficient AMMs.',
+  keywords: 'DeFi, liquidity, correlated assets, AMM, tokenized equities, smart routing, HaydenFlow',
   openGraph: {
-    title: 'Nexora',
+    title: 'HaydenFlow',
     description: 'Programmable Liquidity for Tokenized Markets',
     type: 'website',
   },

@@ -27,7 +27,7 @@ export function DisclaimerBanner() {
             <div className="flex items-center gap-2 max-w-4xl mx-auto w-full">
               <AlertTriangle size={13} className="shrink-0" />
               <span>
-                <strong>Research Application:</strong> Nexora is a testnet/research demonstrator.
+                <strong>Research Application:</strong> HaydenFlow is a testnet/research demonstrator.
                 All tokenized assets (nSPY, nNVDA, nTSLA, etc.) are <strong>simulated</strong> and do{' '}
                 <strong>not</strong> represent ownership in any real securities. This app is for
                 demonstration purposes only. Not financial advice.

@@ -22,7 +22,7 @@ export class WsServer {
       // Send initial welcome & snapshot
       ws.send(JSON.stringify({
         type: 'CONNECTED',
-        message: 'Connected to Nexora Real-Time Liquidity Stream',
+        message: 'Connected to HaydenFlow Real-Time Liquidity Stream',
         timestamp: new Date().toISOString(),
       }));
 

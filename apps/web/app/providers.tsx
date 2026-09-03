@@ -20,7 +20,7 @@ const connectors = connectorsForWallets(
     },
   ],
   {
-    appName: 'Nexora',
+    appName: 'HaydenFlow',
     projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ?? '3fcc6bba2d1de00c02a6e309f2d1e26c',
   }
 );

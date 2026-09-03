@@ -19,7 +19,7 @@ healthRouter.get('/health', async (_req, res) => {
 
   res.json({
     status: dbStatus === 'healthy' ? 'healthy' : 'degraded',
-    service: 'nexora-backend',
+    service: 'haydenflow-backend',
     version: '1.0.0',
     uptimeSeconds: Math.floor(process.uptime()),
     timestamp: new Date().toISOString(),

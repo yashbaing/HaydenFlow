@@ -14,7 +14,7 @@ async function main() {
     console.log(`
 ┌────────────────────────────────────────────────────────┐
 │                                                        │
-│   NEXORA BACKEND API & WEBSOCKET SERVER                │
+│   HAYDENFLOW BACKEND API & WEBSOCKET SERVER            │
 │   Programmable Liquidity for Tokenized Markets         │
 │                                                        │
 │   HTTP API:    http://localhost:${config.port}                │
@@ -28,7 +28,7 @@ async function main() {
   });
 
   const shutdown = () => {
-    console.log('\nGracefully shutting down Nexora API server...');
+    console.log('\nGracefully shutting down HaydenFlow API server...');
     wsServer.close();
     server.close(() => {
       console.log('Server closed. Goodbye.');
@@ -41,6 +41,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error('Failed to start Nexora API server:', err);
+  console.error('Failed to start HaydenFlow API server:', err);
   process.exit(1);
 });

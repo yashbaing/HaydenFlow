@@ -133,7 +133,7 @@ function NetworkBackground() {
 }
 
 const TRADITIONAL_PAIRS = ['NVDA / USD', 'TSLA / USD', 'AMZN / USD', 'QQQ / USD'];
-const NEXORA_PAIRS = ['nNVDA / nSPY', 'nTSLA / nSPY', 'nAMZN / nQQQ', 'nQQQ / nSPY'];
+const HAYDENFLOW_PAIRS = ['nNVDA / nSPY', 'nTSLA / nSPY', 'nAMZN / nQQQ', 'nQQQ / nSPY'];
 
 const FEATURES = [
   {
@@ -147,7 +147,7 @@ const FEATURES = [
     icon: <Zap size={22} className="text-nexora-green" />,
     title: 'Smart Routing',
     description:
-      'Enter and exit through USDC while Nexora automatically finds the most capital-efficient path across the liquidity graph.',
+      'Enter and exit through USDC while HaydenFlow automatically finds the most capital-efficient path across the liquidity graph.',
     color: 'var(--nexora-green)',
   },
   {
@@ -205,7 +205,7 @@ export default function HomePage() {
           </div>
 
           <h1 className="text-6xl md:text-7xl font-bold tracking-tight leading-none mb-4">
-            <span style={{ color: 'var(--nexora-text)' }}>NEXORA</span>
+            <span style={{ color: 'var(--nexora-text)' }}>HAYDENFLOW</span>
           </h1>
           <p className="text-xl md:text-2xl font-light mb-3" style={{ color: 'var(--nexora-text-muted)' }}>
             Programmable Liquidity
@@ -268,7 +268,7 @@ export default function HomePage() {
               A New Market Structure
             </h2>
             <p className="text-base max-w-xl mx-auto" style={{ color: 'var(--nexora-text-muted)' }}>
-              Traditional AMMs route every asset through USD. Nexora enables direct correlated-pair markets.
+              Traditional AMMs route every asset through USD. HaydenFlow enables direct correlated-pair markets.
             </p>
           </div>
 
@@ -300,7 +300,7 @@ export default function HomePage() {
               </p>
             </div>
 
-            {/* Nexora */}
+            {/* HaydenFlow */}
             <div
               className="rounded-xl p-6"
               style={{
@@ -312,11 +312,11 @@ export default function HomePage() {
               <div className="flex items-center gap-2 mb-5">
                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--nexora-blue)' }} />
                 <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--nexora-blue)' }}>
-                  Nexora Correlated Markets
+                  HaydenFlow Correlated Markets
                 </span>
               </div>
               <div className="space-y-2">
-                {NEXORA_PAIRS.map((pair, i) => (
+                {HAYDENFLOW_PAIRS.map((pair, i) => (
                   <div
                     key={pair}
                     className="flex items-center justify-between px-4 py-2.5 rounded-lg font-mono text-sm"
@@ -429,10 +429,10 @@ export default function HomePage() {
         style={{ borderTop: '1px solid var(--nexora-border)', color: 'var(--nexora-text-subtle)' }}
       >
         <p>
-          NEXORA is a research/demonstration application. All tokenized assets are simulated and do not
+          HAYDENFLOW is a research/demonstration application. All tokenized assets are simulated and do not
           represent ownership in real securities. Not financial advice.
         </p>
-        <p className="mt-2">© 2024 Nexora Research</p>
+        <p className="mt-2">© 2024 HaydenFlow Research</p>
       </footer>
     </div>
   );

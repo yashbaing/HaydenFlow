@@ -30,13 +30,13 @@ export function Navigation() {
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 group">
           <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm"
+            className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm text-white"
             style={{ background: 'linear-gradient(135deg, #4F8EF7, #00D4AA)' }}
           >
-            N
+            H
           </div>
           <span className="font-bold text-lg tracking-tight" style={{ color: 'var(--nexora-text)' }}>
-            NEXORA
+            HaydenFlow
           </span>
         </Link>
 
