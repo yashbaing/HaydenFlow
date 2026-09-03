@@ -1,0 +1,35 @@
+{
+  "name": "nexora",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck",
+    "db:push": "cd packages/database && npx prisma db push",
+    "db:seed": "cd packages/database && npx tsx src/seed.ts",
+    "db:studio": "cd packages/database && npx prisma studio",
+    "api:dev": "npm run dev --workspace=@nexora/api",
+    "api:test": "npm run test --workspace=@nexora/api",
+    "web:dev": "npm run dev --workspace=web",
+    "contracts:build": "cd packages/contracts && forge build",
+    "contracts:test": "cd packages/contracts && forge test -vvv",
+    "contracts:deploy": "cd packages/contracts && forge script script/Deploy.s.sol --broadcast"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.0",
+    "typescript": "^5.4.5",
+    "prettier": "^3.2.5",
+    "eslint": "^8.57.0"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  }
+}

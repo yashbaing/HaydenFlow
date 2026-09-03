@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "declaration": false,
+    "declarationMap": false,
+    "paths": {
+      "@nexora/shared": ["../../packages/shared/src"],
+      "@nexora/sdk": ["../../packages/sdk/src"],
+      "@nexora/database": ["../../packages/database/src"]
+    }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}
