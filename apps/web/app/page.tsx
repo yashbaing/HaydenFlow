@@ -171,7 +171,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--nexora-bg)' }}>
       {/* Hero */}
-      <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden px-4 pt-8">
+      <section className="relative min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center px-4 py-12 overflow-hidden">
         <NetworkBackground />
 
         {/* Radial gradient overlay */}
@@ -186,11 +186,11 @@ export default function HomePage() {
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7 }}
-          className="relative z-10 text-center max-w-4xl mx-auto"
+          className="relative z-10 text-center max-w-4xl mx-auto flex flex-col items-center"
         >
           {/* Tagline pill */}
           <div
-            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-medium mb-8"
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-medium mb-6 sm:mb-8"
             style={{
               backgroundColor: 'rgba(79,142,247,0.1)',
               border: '1px solid rgba(79,142,247,0.25)',
@@ -208,15 +208,14 @@ export default function HomePage() {
             <span style={{ color: 'var(--nexora-text)' }}>HAYDENFLOW</span>
           </h1>
           <p className="text-lg sm:text-xl md:text-2xl font-light mb-3" style={{ color: 'var(--nexora-text-muted)' }}>
-            Programmable Liquidity
-            <br />
+            Programmable Liquidity{' '}
             <span className="gradient-text font-semibold">for Tokenized Markets</span>
           </p>
           <p className="text-sm sm:text-base mb-8 sm:mb-10 max-w-xl mx-auto px-2" style={{ color: 'var(--nexora-text-muted)' }}>
             Trade assets against what they actually move with.
           </p>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 w-full max-w-xs sm:max-w-none mx-auto">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 w-full max-w-xs sm:max-w-none mx-auto mb-10 sm:mb-12">
             <Link href="/trade" className="btn-primary flex items-center justify-center gap-2 text-base px-8 py-3 w-full sm:w-auto">
               Launch App <ArrowRight size={16} />
             </Link>
@@ -224,29 +223,22 @@ export default function HomePage() {
               Explore Network <Network size={16} />
             </Link>
           </div>
-        </motion.div>
 
-        {/* Stats ticker */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5, duration: 0.5 }}
-          className="mt-8 sm:mt-0 sm:absolute sm:bottom-10 sm:left-1/2 sm:-translate-x-1/2 z-10 w-full px-4 sm:w-auto flex justify-center"
-        >
+          {/* Stats ticker - cleanly centered in hero flow */}
           <div
-            className="grid grid-cols-2 sm:flex items-center gap-4 sm:gap-8 px-6 sm:px-8 py-3.5 sm:py-3 rounded-2xl sm:rounded-full w-full max-w-sm sm:max-w-none"
+            className="grid grid-cols-2 sm:flex items-center gap-6 sm:gap-10 px-6 sm:px-10 py-4 sm:py-3.5 rounded-2xl sm:rounded-full w-full max-w-sm sm:max-w-none mx-auto shadow-lg"
             style={{
               backgroundColor: 'rgba(15,17,24,0.92)',
               border: '1px solid var(--nexora-border)',
-              backdropFilter: 'blur(12px)',
+              backdropFilter: 'blur(16px)',
             }}
           >
             {STATS.map((stat, i) => (
               <div key={i} className="flex flex-col items-center">
-                <span className="font-mono font-bold text-sm sm:text-base" style={{ color: 'var(--nexora-text)' }}>
+                <span className="font-mono font-bold text-base sm:text-lg" style={{ color: 'var(--nexora-text)' }}>
                   {stat.value}
                 </span>
-                <span className="text-[11px] sm:text-xs" style={{ color: 'var(--nexora-text-subtle)' }}>
+                <span className="text-[11px] sm:text-xs tracking-wider uppercase mt-0.5" style={{ color: 'var(--nexora-text-subtle)' }}>
                   {stat.label}
                 </span>
               </div>
