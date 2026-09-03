@@ -36,7 +36,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Providers>
           <DisclaimerBanner />
           <Navigation />
-          <main className="min-h-screen pt-16">
+          <main className="min-h-screen pt-16 pb-16 md:pb-0">
             {children}
           </main>
         </Providers>

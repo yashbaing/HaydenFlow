@@ -204,23 +204,23 @@ export default function HomePage() {
             Testnet Research Application
           </div>
 
-          <h1 className="text-6xl md:text-7xl font-bold tracking-tight leading-none mb-4">
+          <h1 className="text-4xl sm:text-6xl md:text-7xl font-bold tracking-tight leading-tight sm:leading-none mb-4">
             <span style={{ color: 'var(--nexora-text)' }}>HAYDENFLOW</span>
           </h1>
-          <p className="text-xl md:text-2xl font-light mb-3" style={{ color: 'var(--nexora-text-muted)' }}>
+          <p className="text-lg sm:text-xl md:text-2xl font-light mb-3" style={{ color: 'var(--nexora-text-muted)' }}>
             Programmable Liquidity
             <br />
             <span className="gradient-text font-semibold">for Tokenized Markets</span>
           </p>
-          <p className="text-base mb-10 max-w-xl mx-auto" style={{ color: 'var(--nexora-text-muted)' }}>
+          <p className="text-sm sm:text-base mb-8 sm:mb-10 max-w-xl mx-auto px-2" style={{ color: 'var(--nexora-text-muted)' }}>
             Trade assets against what they actually move with.
           </p>
 
-          <div className="flex items-center justify-center gap-4">
-            <Link href="/trade" className="btn-primary flex items-center gap-2 text-base px-8 py-3">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 w-full max-w-xs sm:max-w-none mx-auto">
+            <Link href="/trade" className="btn-primary flex items-center justify-center gap-2 text-base px-8 py-3 w-full sm:w-auto">
               Launch App <ArrowRight size={16} />
             </Link>
-            <Link href="/markets/network" className="btn-ghost flex items-center gap-2 text-base px-6 py-3">
+            <Link href="/markets/network" className="btn-ghost flex items-center justify-center gap-2 text-base px-6 py-3 w-full sm:w-auto">
               Explore Network <Network size={16} />
             </Link>
           </div>
@@ -231,22 +231,22 @@ export default function HomePage() {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5, duration: 0.5 }}
-          className="absolute bottom-12 left-1/2 -translate-x-1/2 z-10"
+          className="mt-8 sm:mt-0 sm:absolute sm:bottom-10 sm:left-1/2 sm:-translate-x-1/2 z-10 w-full px-4 sm:w-auto flex justify-center"
         >
           <div
-            className="flex items-center gap-8 px-8 py-3 rounded-full"
+            className="grid grid-cols-2 sm:flex items-center gap-4 sm:gap-8 px-6 sm:px-8 py-3.5 sm:py-3 rounded-2xl sm:rounded-full w-full max-w-sm sm:max-w-none"
             style={{
-              backgroundColor: 'rgba(15,17,24,0.9)',
+              backgroundColor: 'rgba(15,17,24,0.92)',
               border: '1px solid var(--nexora-border)',
               backdropFilter: 'blur(12px)',
             }}
           >
             {STATS.map((stat, i) => (
               <div key={i} className="flex flex-col items-center">
-                <span className="font-mono font-bold text-base" style={{ color: 'var(--nexora-text)' }}>
+                <span className="font-mono font-bold text-sm sm:text-base" style={{ color: 'var(--nexora-text)' }}>
                   {stat.value}
                 </span>
-                <span className="text-xs" style={{ color: 'var(--nexora-text-subtle)' }}>
+                <span className="text-[11px] sm:text-xs" style={{ color: 'var(--nexora-text-subtle)' }}>
                   {stat.label}
                 </span>
               </div>

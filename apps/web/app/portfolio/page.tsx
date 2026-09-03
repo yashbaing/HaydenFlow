@@ -88,7 +88,8 @@ export default function PortfolioPage() {
               className="rounded-xl overflow-hidden"
               style={{ backgroundColor: 'var(--nexora-surface)', border: '1px solid var(--nexora-border)' }}
             >
-              <table className="nx-table w-full">
+              <div className="overflow-x-auto">
+                <table className="nx-table w-full">
                 <thead>
                   <tr>
                     {['Asset', 'Balance', 'Price', '24h', 'Value', 'Type'].map(h => (
@@ -146,6 +147,7 @@ export default function PortfolioPage() {
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
 
             {/* Opportunities */}

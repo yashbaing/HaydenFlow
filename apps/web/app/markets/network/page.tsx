@@ -219,7 +219,7 @@ export default function NetworkPage() {
         </div>
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden relative">
         {/* Graph */}
         <div className="flex-1 relative">
           <svg ref={svgRef} className="w-full h-full" style={{ minHeight: 'calc(100vh - 130px)' }} />
@@ -228,7 +228,7 @@ export default function NetworkPage() {
         {/* Side panel */}
         {selectedPanel && (
           <div
-            className="w-80 border-l overflow-y-auto shrink-0"
+            className="w-full sm:w-80 absolute sm:relative bottom-0 right-0 sm:bottom-auto max-h-[60vh] sm:max-h-none overflow-y-auto shrink-0 z-30 border-t sm:border-t-0 sm:border-l shadow-2xl"
             style={{ borderColor: 'var(--nexora-border)', backgroundColor: 'var(--nexora-surface)' }}
           >
             <div className="p-5">

@@ -110,7 +110,7 @@ export default function CreatePoolPage() {
                 ) : correlation ? (
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                     {/* Big correlation number */}
-                    <div className="flex items-center gap-4 mb-4 p-4 rounded-xl" style={{ backgroundColor: 'var(--nexora-surface-2)' }}>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4 p-4 rounded-xl" style={{ backgroundColor: 'var(--nexora-surface-2)' }}>
                       <div>
                         <div
                           className="text-5xl font-bold font-mono"

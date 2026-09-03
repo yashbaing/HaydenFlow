@@ -155,7 +155,7 @@ export default function AnalyticsPage() {
           {/* Routing distribution */}
           <div className="rounded-xl p-5" style={{ backgroundColor: 'var(--nexora-surface)', border: '1px solid var(--nexora-border)' }}>
             <h3 className="font-semibold text-sm mb-4" style={{ color: 'var(--nexora-text)' }}>Routing Distribution</h3>
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
               <ResponsiveContainer width={120} height={120}>
                 <RePieChart>
                   <Pie data={ROUTING_DATA} cx="50%" cy="50%" innerRadius={35} outerRadius={55} dataKey="value" stroke="none">
