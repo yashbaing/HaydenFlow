@@ -1,23 +1,28 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Settings2, ArrowUpDown, Info, ChevronDown, ChevronUp, Zap } from 'lucide-react';
+import { Settings2, ArrowUpDown, Info, ChevronDown, ChevronUp, Zap, RotateCcw } from 'lucide-react';
 import type { Asset, Route, TxState } from '@nexora/shared';
 import { buildAssets, getMarkets } from '@nexora/sdk';
 import { findRoutes, selectBestRoute } from '@nexora/sdk';
 import { SwapInput } from '@/components/ui/SwapInput';
-import { RouteVisualizer, RoutePathDisplay } from '@/components/ui/RouteVisualizer';
+import { RouteVisualizer } from '@/components/ui/RouteVisualizer';
 import { TransactionStatus } from '@/components/ui/TransactionStatus';
 import { KpiRow } from '@/components/ui/KpiCard';
 import {
   formatUSD, formatBps, formatTokenAmount, getPriceImpactColor, calcMinReceived
 } from '@/lib/utils';
 import { SLIPPAGE_PRESETS } from '@nexora/shared';
+import { useHaydenStore } from '@/lib/store';
 
 const SLIPPAGE_OPTIONS = [0.1, 0.5, 1.0, 2.0];
 
-export default function TradePage() {
+function TradeContent() {
+  const searchParams = useSearchParams();
+  const { getBalance, executeSwap, resetBalances } = useHaydenStore();
+
   const [assets, setAssets] = useState<Asset[]>([]);
   const [tokenIn, setTokenIn] = useState<Asset | undefined>();
   const [tokenOut, setTokenOut] = useState<Asset | undefined>();
@@ -33,9 +38,18 @@ export default function TradePage() {
   useEffect(() => {
     const allAssets = buildAssets();
     setAssets(allAssets);
-    setTokenIn(allAssets.find(a => a.symbol === 'USDC'));
-    setTokenOut(allAssets.find(a => a.symbol === 'nNVDA'));
-  }, []);
+
+    const inParam = searchParams.get('in');
+    const outParam = searchParams.get('out');
+
+    const defaultIn = (inParam && allAssets.find(a => a.symbol.toLowerCase() === inParam.toLowerCase())) ||
+      allAssets.find(a => a.symbol === 'USDC');
+    const defaultOut = (outParam && allAssets.find(a => a.symbol.toLowerCase() === outParam.toLowerCase())) ||
+      allAssets.find(a => a.symbol === 'nNVDA');
+
+    setTokenIn(defaultIn);
+    setTokenOut(defaultOut);
+  }, [searchParams]);
 
   const discoverRoutes = useCallback(async () => {
     if (!tokenIn || !tokenOut || !amountIn || parseFloat(amountIn) === 0) {
@@ -57,7 +71,7 @@ export default function TradePage() {
   }, [tokenIn, tokenOut, amountIn, slippageBps]);
 
   useEffect(() => {
-    const timeout = setTimeout(discoverRoutes, 400);
+    const timeout = setTimeout(discoverRoutes, 300);
     return () => clearTimeout(timeout);
   }, [discoverRoutes]);
 
@@ -68,12 +82,49 @@ export default function TradePage() {
     setAmountIn('');
   };
 
+  const currentBalance = tokenIn ? getBalance(tokenIn.symbol) : 0;
+  const isInsufficientBalance = parseFloat(amountIn || '0') > currentBalance;
+
   const handleSwap = async () => {
-    if (!bestRoute || !tokenIn || !tokenOut) return;
+    if (!bestRoute || !tokenIn || !tokenOut || isInsufficientBalance) return;
+
     setTxState({ status: 'awaiting_wallet' });
-    // Simulate transaction flow
-    setTimeout(() => setTxState({ status: 'pending', hash: '0x' + Math.random().toString(16).slice(2, 66) }), 1500);
-    setTimeout(() => setTxState({ status: 'confirmed', hash: '0x' + Math.random().toString(16).slice(2, 66) }), 5000);
+
+    try {
+      // Execute via backend swap simulation API
+      let txHash = '0x' + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+
+      try {
+        const res = await fetch('/api/swap/simulate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tokenIn: tokenIn.symbol,
+            tokenOut: tokenOut.symbol,
+            amountIn: BigInt(Math.floor(parseFloat(amountIn) * 10 ** tokenIn.decimals)).toString(),
+            slippageBps,
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.txHash) txHash = data.txHash;
+        }
+      } catch {
+        // Fallback to local cryptographic hash if offline
+      }
+
+      setTxState({ status: 'pending', hash: txHash });
+
+      // Realistic transaction mining time
+      setTimeout(() => {
+        const outAmount = Number(bestRoute.amountOut) / 10 ** tokenOut.decimals;
+        executeSwap(tokenIn.symbol, parseFloat(amountIn), tokenOut.symbol, outAmount, txHash);
+        setTxState({ status: 'confirmed', hash: txHash });
+        setAmountIn('');
+      }, 1200);
+    } catch (err: any) {
+      setTxState({ status: 'failed', error: err.message || 'Swap failed' });
+    }
   };
 
   const usdValueIn = tokenIn && amountIn ? parseFloat(amountIn) * tokenIn.currentPrice : 0;
@@ -83,11 +134,36 @@ export default function TradePage() {
     : 0;
   const altRoutes = routes.slice(1, 4);
 
+  const walletBalanceBigInt = tokenIn
+    ? BigInt(Math.floor(currentBalance * 10 ** tokenIn.decimals))
+    : undefined;
+
   return (
     <div className="min-h-screen py-10 px-4">
       <div className="max-w-screen-xl mx-auto">
-        <div className="grid lg:grid-cols-5 gap-6">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold" style={{ color: 'var(--nexora-text)' }}>Swap</h1>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--nexora-text-muted)' }}>
+              Capital-efficient routing across correlated asset pools
+            </p>
+          </div>
+          <button
+            onClick={resetBalances}
+            title="Reset test balances to default"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+            style={{
+              backgroundColor: 'var(--nexora-surface-2)',
+              color: 'var(--nexora-text-muted)',
+              border: '1px solid var(--nexora-border)',
+            }}
+          >
+            <RotateCcw size={12} />
+            <span>Reset Demo Balances</span>
+          </button>
+        </div>
 
+        <div className="grid lg:grid-cols-5 gap-6">
           {/* === LEFT: Swap Panel === */}
           <div className="lg:col-span-2">
             <div
@@ -96,7 +172,7 @@ export default function TradePage() {
             >
               {/* Header */}
               <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: 'var(--nexora-border)' }}>
-                <h2 className="font-semibold text-base" style={{ color: 'var(--nexora-text)' }}>Swap</h2>
+                <h2 className="font-semibold text-base" style={{ color: 'var(--nexora-text)' }}>Trade Form</h2>
                 <button onClick={() => setShowSlippage(!showSlippage)} className="p-2 rounded-lg transition-colors hover:bg-nexora-surface-2">
                   <Settings2 size={16} style={{ color: 'var(--nexora-text-muted)' }} />
                 </button>
@@ -121,7 +197,7 @@ export default function TradePage() {
                           <button
                             key={opt}
                             onClick={() => setSlippageBps(opt * 100)}
-                            className="px-3 py-1.5 rounded text-xs font-mono transition-colors"
+                            className="flex-1 py-1 text-xs rounded font-mono transition-colors"
                             style={{
                               backgroundColor: slippageBps === opt * 100 ? 'var(--nexora-blue)' : 'var(--nexora-surface)',
                               color: slippageBps === opt * 100 ? 'white' : 'var(--nexora-text-muted)',
@@ -147,6 +223,7 @@ export default function TradePage() {
                   value={amountIn}
                   onValueChange={setAmountIn}
                   usdValue={usdValueIn}
+                  walletBalance={walletBalanceBigInt}
                   excludeSymbol={tokenOut?.symbol}
                 />
 
@@ -154,7 +231,7 @@ export default function TradePage() {
                 <div className="flex justify-center">
                   <button
                     onClick={handleSwapAssets}
-                    className="p-2.5 rounded-xl transition-all hover:scale-110"
+                    className="p-2.5 rounded-xl transition-all hover:scale-110 active:scale-95"
                     style={{ backgroundColor: 'var(--nexora-surface-2)', border: '1px solid var(--nexora-border)' }}
                   >
                     <ArrowUpDown size={16} style={{ color: 'var(--nexora-text-muted)' }} />
@@ -201,10 +278,20 @@ export default function TradePage() {
                 {/* Swap button */}
                 <button
                   onClick={handleSwap}
-                  disabled={!bestRoute || loading}
-                  className="btn-primary w-full py-4 text-base"
+                  disabled={!bestRoute || loading || isInsufficientBalance}
+                  className={`btn-primary w-full py-4 text-base ${isInsufficientBalance ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                  {loading ? 'Finding best route...' : !tokenIn || !tokenOut ? 'Select tokens' : !amountIn ? 'Enter amount' : !bestRoute ? 'No route found' : `Swap ${tokenIn.symbol} → ${tokenOut?.symbol}`}
+                  {loading
+                    ? 'Finding best route...'
+                    : !tokenIn || !tokenOut
+                    ? 'Select tokens'
+                    : !amountIn
+                    ? 'Enter amount'
+                    : isInsufficientBalance
+                    ? `Insufficient ${tokenIn.symbol} balance`
+                    : !bestRoute
+                    ? 'No route found'
+                    : `Swap ${tokenIn.symbol} → ${tokenOut?.symbol}`}
                 </button>
               </div>
             </div>
@@ -241,7 +328,7 @@ export default function TradePage() {
                   <RouteVisualizer route={bestRoute} isSelected showDetails />
                 ) : (
                   <div className="py-10 text-center text-sm" style={{ color: 'var(--nexora-text-muted)' }}>
-                    Enter an amount to see the best route
+                    Enter an amount to discover the optimal correlated route
                   </div>
                 )}
               </div>
@@ -310,5 +397,13 @@ export default function TradePage() {
 
       <TransactionStatus state={txState} onDismiss={() => setTxState({ status: 'idle' })} />
     </div>
+  );
+}
+
+export default function TradePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen py-10 px-4 text-center text-sm text-nexora-muted">Loading trade terminal...</div>}>
+      <TradeContent />
+    </Suspense>
   );
 }

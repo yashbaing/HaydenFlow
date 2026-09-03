@@ -8,7 +8,8 @@ import { getAssetTypeColor, getPoolTypeColor, formatUSD } from '@/lib/utils';
 import { PoolTypeBadge, CorrelationBadge, AssetTypeBadge } from '@/components/ui/Badges';
 import { AssetIcon } from '@/components/ui/AssetIcon';
 import { findRoutes, selectBestRoute } from '@nexora/sdk';
-import { X } from 'lucide-react';
+import { X, ArrowRight, Zap } from 'lucide-react';
+import Link from 'next/link';
 
 interface NodeDatum extends d3.SimulationNodeDatum {
   id: string;
@@ -279,6 +280,14 @@ export default function NetworkPage() {
                 </div>
               </div>
 
+              <Link
+                href={`/trade?in=USDC&out=${selectedPanel.asset.symbol}`}
+                className="btn-primary flex items-center justify-center gap-1.5 w-full mt-3 py-2 text-xs font-semibold"
+              >
+                <Zap size={12} />
+                Trade {selectedPanel.asset.symbol} with USDC
+              </Link>
+
               {/* Connected pools */}
               <div className="mt-5">
                 <div className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--nexora-text-subtle)' }}>
@@ -322,6 +331,23 @@ export default function NetworkPage() {
                           <span className="font-mono font-semibold" style={{ color: 'var(--nexora-green)' }}>
                             {pool.apr.toFixed(1)}%
                           </span>
+                        </div>
+
+                        <div className="flex items-center gap-2 mt-2 pt-2 border-t" style={{ borderColor: 'var(--nexora-border)' }}>
+                          <Link
+                            href={`/trade?in=${selectedPanel.asset.symbol}&out=${other.symbol}`}
+                            className="text-[11px] font-medium px-2 py-1 rounded text-center flex-1 transition-colors"
+                            style={{ backgroundColor: 'rgba(79,142,247,0.1)', color: 'var(--nexora-blue)' }}
+                          >
+                            Trade
+                          </Link>
+                          <Link
+                            href={`/earn?pool=${pool.id}`}
+                            className="text-[11px] font-medium px-2 py-1 rounded text-center flex-1 transition-colors"
+                            style={{ backgroundColor: 'rgba(0,212,170,0.1)', color: 'var(--nexora-green)' }}
+                          >
+                            Provide LP
+                          </Link>
                         </div>
                       </div>
                     );

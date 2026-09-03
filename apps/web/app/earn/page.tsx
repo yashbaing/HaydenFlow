@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import type { Pool, Asset } from '@nexora/shared';
 import { getMarkets, buildAssets } from '@nexora/sdk';
@@ -10,7 +11,10 @@ import { KpiRow } from '@/components/ui/KpiCard';
 import { formatUSD } from '@/lib/utils';
 import { useAccount } from 'wagmi';
 import { WalletButton } from '@/components/layout/WalletButton';
-import { TrendingUp, Shield, Wallet } from 'lucide-react';
+import { TransactionStatus } from '@/components/ui/TransactionStatus';
+import { TrendingUp, Shield, Wallet, CheckCircle } from 'lucide-react';
+import { useHaydenStore } from '@/lib/store';
+import type { TxState } from '@nexora/shared';
 
 interface PoolOpportunity {
   pool: Pool;
@@ -20,16 +24,11 @@ interface PoolOpportunity {
   relevantAssets: string[];
 }
 
-const MOCK_BALANCES: Record<string, number> = {
-  nNVDA: 5.0,
-  nSPY: 3.0,
-  nQQQ: 2.0,
-  WETH: 1.0,
-  USDC: 5000,
-};
-
-export default function EarnPage() {
+function EarnContent() {
   const { address, isConnected } = useAccount();
+  const searchParams = useSearchParams();
+  const { getBalance, addLiquidity } = useHaydenStore();
+
   const [pools, setPools] = useState<Pool[]>([]);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [opportunities, setOpportunities] = useState<PoolOpportunity[]>([]);
@@ -37,181 +36,195 @@ export default function EarnPage() {
   const [addLiquidityPool, setAddLiquidityPool] = useState<Pool | null>(null);
   const [amount0, setAmount0] = useState('');
   const [amount1, setAmount1] = useState('');
+  const [txState, setTxState] = useState<TxState>({ status: 'idle' });
 
   useEffect(() => {
     Promise.all([getMarkets(), Promise.resolve(buildAssets())]).then(([m, a]) => {
       setPools(m);
       setAssets(a);
 
-      const heldSymbols = new Set(Object.keys(MOCK_BALANCES));
-      const opps: PoolOpportunity[] = [];
+      // Check pool search param
+      const poolParam = searchParams.get('pool');
+      if (poolParam) {
+        const found = m.find(p => p.id === poolParam || `${p.token0.symbol}-${p.token1.symbol}`.toLowerCase() === poolParam.toLowerCase());
+        if (found) setAddLiquidityPool(found);
+      }
 
+      const opps: PoolOpportunity[] = [];
       for (const pool of m) {
         const sym0 = pool.token0.symbol;
         const sym1 = pool.token1.symbol;
-        const holds0 = heldSymbols.has(sym0);
-        const holds1 = heldSymbols.has(sym1);
-        if (!holds0 && !holds1) continue;
+        const bal0 = getBalance(sym0);
+        const bal1 = getBalance(sym1);
 
-        opps.push({
-          pool,
-          reason: holds0 && holds1
-            ? `You hold both ${sym0} and ${sym1}. Their historical correlation reduces relative inventory volatility, making this an efficient LP position.`
-            : `You hold ${holds0 ? sym0 : sym1} and can pair it with the correlated ${holds0 ? sym1 : sym0} for lower impermanent loss risk.`,
-          estimatedApr: pool.apr,
-          correlationScore: pool.correlation,
-          relevantAssets: [sym0, sym1].filter(s => heldSymbols.has(s)),
-        });
+        if (bal0 > 0 || bal1 > 0 || pool.poolType === 'CORRELATED') {
+          opps.push({
+            pool,
+            reason: bal0 > 0 && bal1 > 0
+              ? `You hold both ${sym0} and ${sym1}. Natural correlation reduces relative volatility and impermanent loss.`
+              : `Pair your ${bal0 > 0 ? sym0 : sym1} with ${bal0 > 0 ? sym1 : sym0} for consistent LP fee capture.`,
+            estimatedApr: pool.apr,
+            correlationScore: pool.correlation,
+            relevantAssets: [sym0, sym1],
+          });
+        }
       }
 
       setOpportunities(opps.sort((a, b) => b.estimatedApr - a.estimatedApr));
       setLoading(false);
     });
-  }, []);
+  }, [searchParams, getBalance]);
+
+  const bal0 = addLiquidityPool ? getBalance(addLiquidityPool.token0.symbol) : 0;
+  const bal1 = addLiquidityPool ? getBalance(addLiquidityPool.token1.symbol) : 0;
+
+  const totalValueUSD = addLiquidityPool
+    ? (parseFloat(amount0 || '0') * addLiquidityPool.token0.currentPrice) +
+      (parseFloat(amount1 || '0') * addLiquidityPool.token1.currentPrice)
+    : 0;
+
+  const isInsufficient =
+    parseFloat(amount0 || '0') > bal0 || parseFloat(amount1 || '0') > bal1;
+
+  const handleConfirmLiquidity = () => {
+    if (!addLiquidityPool || !amount0 || !amount1 || isInsufficient) return;
+
+    setTxState({ status: 'awaiting_wallet' });
+
+    const hash = '0x' + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+
+    setTimeout(() => {
+      setTxState({ status: 'pending', hash });
+    }, 800);
+
+    setTimeout(() => {
+      addLiquidity(
+        addLiquidityPool.id,
+        addLiquidityPool.token0.symbol,
+        parseFloat(amount0),
+        addLiquidityPool.token1.symbol,
+        parseFloat(amount1),
+        addLiquidityPool.apr,
+        totalValueUSD
+      );
+      setTxState({ status: 'confirmed', hash });
+      setAmount0('');
+      setAmount1('');
+      setAddLiquidityPool(null);
+    }, 2200);
+  };
 
   return (
     <div className="min-h-screen py-10 px-4">
       <div className="max-w-screen-xl mx-auto">
-        {/* Header */}
-        <div className="flex items-start justify-between mb-8">
-          <div>
-            <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--nexora-text)' }}>Earn</h1>
-            <p className="text-sm" style={{ color: 'var(--nexora-text-muted)' }}>
-              Provide correlated-pair liquidity and earn market-making fees.
-            </p>
-          </div>
-          {!isConnected && <WalletButton />}
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--nexora-text)' }}>Earn</h1>
+          <p className="text-sm" style={{ color: 'var(--nexora-text-muted)' }}>
+            Provide liquidity in correlated pools for lower impermanent loss risk and sustainable yield.
+          </p>
         </div>
 
-        {/* Holdings summary (mock) */}
-        {isConnected && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-8"
-          >
-            {Object.entries(MOCK_BALANCES).map(([sym, bal]) => {
-              const asset = assets.find(a => a.symbol === sym);
-              if (!asset) return null;
-              return (
-                <div
-                  key={sym}
-                  className="rounded-lg p-3 text-sm"
-                  style={{ backgroundColor: 'var(--nexora-surface)', border: '1px solid var(--nexora-border)' }}
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <AssetIcon asset={asset} size={18} />
-                    <span className="font-mono font-semibold" style={{ color: 'var(--nexora-text)' }}>{sym}</span>
-                  </div>
-                  <div className="font-mono text-xs" style={{ color: 'var(--nexora-text-muted)' }}>
-                    {bal.toFixed(4)}
-                  </div>
-                  <div className="font-mono text-xs mt-0.5" style={{ color: 'var(--nexora-green)' }}>
-                    {formatUSD(bal * asset.currentPrice, true)}
-                  </div>
-                </div>
-              );
-            })}
-          </motion.div>
-        )}
+        {/* Why Correlated LPs Banner */}
+        <div
+          className="rounded-xl p-5 mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
+          style={{
+            backgroundColor: 'rgba(79,142,247,0.06)',
+            border: '1px solid rgba(79,142,247,0.2)',
+          }}
+        >
+          <div className="flex items-center gap-3">
+            <Shield size={24} style={{ color: 'var(--nexora-blue)' }} />
+            <div>
+              <div className="font-semibold text-sm" style={{ color: 'var(--nexora-text)' }}>
+                Portfolio-Native Liquidity Provisioning
+              </div>
+              <div className="text-xs mt-0.5" style={{ color: 'var(--nexora-text-muted)' }}>
+                Holding NVDA and SPY? Provide NVDA/SPY liquidity. Since both assets move in the same direction, relative price deviation is minimized, dramatically lowering impermanent loss.
+              </div>
+            </div>
+          </div>
+          <span className="text-xs px-3 py-1 rounded-full font-semibold shrink-0" style={{ backgroundColor: 'rgba(0,212,170,0.1)', color: 'var(--nexora-green)' }}>
+            Up to 80% Lower IL Risk
+          </span>
+        </div>
 
         <div className="grid lg:grid-cols-3 gap-6">
-          {/* Opportunities */}
-          <div className="lg:col-span-2">
-            <div className="flex items-center gap-2 mb-4">
-              <TrendingUp size={16} style={{ color: 'var(--nexora-blue)' }} />
-              <h2 className="font-semibold text-sm uppercase tracking-wider" style={{ color: 'var(--nexora-text-muted)' }}>
-                {isConnected ? 'Liquidity Opportunities From Your Holdings' : 'All Liquidity Pools'}
-              </h2>
-            </div>
+          {/* Opportunities list */}
+          <div className="lg:col-span-2 space-y-4">
+            <h2 className="text-sm font-semibold uppercase tracking-wider" style={{ color: 'var(--nexora-text-muted)' }}>
+              Recommended Positions
+            </h2>
 
             {loading ? (
-              <div className="space-y-4">
-                {[1, 2, 3].map(i => <div key={i} className="skeleton h-40 rounded-xl" />)}
+              <div className="space-y-3">
+                {[1, 2, 3].map(i => <div key={i} className="skeleton h-24 rounded-xl" />)}
               </div>
             ) : (
-              <div className="space-y-4">
-                {(isConnected ? opportunities : pools.map(p => ({
-                  pool: p,
-                  reason: 'Supply liquidity to this pool and earn fees.',
-                  estimatedApr: p.apr,
-                  correlationScore: p.correlation,
-                  relevantAssets: [p.token0.symbol, p.token1.symbol],
-                }))).map(({ pool, reason, estimatedApr, correlationScore }) => (
-                  <motion.div
-                    key={pool.id}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="rounded-xl overflow-hidden"
-                    style={{ backgroundColor: 'var(--nexora-surface)', border: '1px solid var(--nexora-border)' }}
-                  >
-                    <div className="p-5">
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex items-center gap-3">
-                          <div className="flex -space-x-2">
-                            <AssetIcon asset={pool.token0} size={32} />
-                            <AssetIcon asset={pool.token1} size={32} />
-                          </div>
-                          <div>
-                            <div className="font-mono font-bold" style={{ color: 'var(--nexora-text)' }}>
-                              {pool.token0.symbol}/{pool.token1.symbol}
-                            </div>
-                            <div className="flex items-center gap-2 mt-1">
-                              <PoolTypeBadge type={pool.poolType} />
-                              {correlationScore != null && pool.correlationClassification && (
-                                <CorrelationBadge
-                                  classification={pool.correlationClassification}
-                                  value={correlationScore}
-                                />
-                              )}
-                            </div>
-                          </div>
+              opportunities.map(opp => (
+                <motion.div
+                  key={opp.pool.id}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="rounded-xl p-5 transition-all hover:border-nexora-blue cursor-pointer"
+                  style={{
+                    backgroundColor: 'var(--nexora-surface)',
+                    border: addLiquidityPool?.id === opp.pool.id
+                      ? '1px solid var(--nexora-blue)'
+                      : '1px solid var(--nexora-border)',
+                  }}
+                  onClick={() => setAddLiquidityPool(opp.pool)}
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center -space-x-2">
+                        <AssetIcon asset={opp.pool.token0} size={28} />
+                        <AssetIcon asset={opp.pool.token1} size={28} />
+                      </div>
+                      <div>
+                        <div className="font-bold text-sm font-mono" style={{ color: 'var(--nexora-text)' }}>
+                          {opp.pool.token0.symbol} / {opp.pool.token1.symbol}
                         </div>
-                        <div className="text-right">
-                          <div className="text-2xl font-bold font-mono" style={{ color: 'var(--nexora-green)' }}>
-                            {estimatedApr.toFixed(1)}%
-                          </div>
-                          <div className="text-xs" style={{ color: 'var(--nexora-text-muted)' }}>Est. APR</div>
+                        <div className="text-xs" style={{ color: 'var(--nexora-text-muted)' }}>
+                          TVL: {formatUSD(opp.pool.tvl, true)} · Volume: {formatUSD(opp.pool.volume24h, true)}
                         </div>
                       </div>
-
-                      <div className="grid grid-cols-3 gap-4 mb-4 py-3 border-y" style={{ borderColor: 'var(--nexora-border)' }}>
-                        <div className="text-center">
-                          <div className="text-xs mb-1" style={{ color: 'var(--nexora-text-subtle)' }}>TVL</div>
-                          <div className="font-mono font-semibold text-sm" style={{ color: 'var(--nexora-text)' }}>
-                            {formatUSD(pool.tvl, true)}
-                          </div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-xs mb-1" style={{ color: 'var(--nexora-text-subtle)' }}>24h Vol</div>
-                          <div className="font-mono font-semibold text-sm" style={{ color: 'var(--nexora-text)' }}>
-                            {formatUSD(pool.volume24h, true)}
-                          </div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-xs mb-1" style={{ color: 'var(--nexora-text-subtle)' }}>Risk</div>
-                          <RiskBadge risk={pool.riskLevel} />
-                        </div>
-                      </div>
-
-                      <div
-                        className="flex items-start gap-2 p-3 rounded-lg text-xs mb-4"
-                        style={{ backgroundColor: 'var(--nexora-surface-2)' }}
-                      >
-                        <Shield size={12} className="mt-0.5 shrink-0" style={{ color: 'var(--nexora-blue)' }} />
-                        <span style={{ color: 'var(--nexora-text-muted)' }}>{reason}</span>
-                      </div>
-
-                      <button
-                        onClick={() => { setAddLiquidityPool(pool); setAmount0(''); setAmount1(''); }}
-                        className="btn-primary w-full py-3 text-sm"
-                      >
-                        Add Liquidity
-                      </button>
                     </div>
-                  </motion.div>
-                ))}
-              </div>
+
+                    <div className="text-right">
+                      <div className="font-mono font-bold text-base" style={{ color: 'var(--nexora-green)' }}>
+                        {opp.estimatedApr.toFixed(1)}% APR
+                      </div>
+                      <div className="text-xs" style={{ color: 'var(--nexora-text-subtle)' }}>
+                        estimated yield
+                      </div>
+                    </div>
+                  </div>
+
+                  <p className="text-xs mb-3" style={{ color: 'var(--nexora-text-muted)' }}>
+                    {opp.reason}
+                  </p>
+
+                  <div className="flex items-center justify-between pt-3 border-t" style={{ borderColor: 'var(--nexora-border)' }}>
+                    <div className="flex items-center gap-2">
+                      <PoolTypeBadge type={opp.pool.poolType} />
+                      {opp.pool.correlation != null && opp.pool.correlationClassification && (
+                        <CorrelationBadge classification={opp.pool.correlationClassification} value={opp.pool.correlation} />
+                      )}
+                      <RiskBadge risk={opp.pool.riskLevel} />
+                    </div>
+
+                    <button
+                      onClick={e => {
+                        e.stopPropagation();
+                        setAddLiquidityPool(opp.pool);
+                      }}
+                      className="btn-primary text-xs px-3 py-1.5"
+                    >
+                      Add Liquidity
+                    </button>
+                  </div>
+                </motion.div>
+              ))
             )}
           </div>
 
@@ -221,7 +234,7 @@ export default function EarnPage() {
               <motion.div
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
-                className="rounded-xl sticky top-20"
+                className="rounded-xl fixed inset-x-4 bottom-16 sm:relative sm:inset-auto sm:top-20 z-40 sm:z-auto max-h-[80vh] overflow-y-auto shadow-2xl sm:shadow-none"
                 style={{ backgroundColor: 'var(--nexora-surface)', border: '1px solid var(--nexora-border)' }}
               >
                 <div className="px-5 py-4 border-b flex items-center justify-between" style={{ borderColor: 'var(--nexora-border)' }}>
@@ -230,7 +243,7 @@ export default function EarnPage() {
                   </h3>
                   <button
                     onClick={() => setAddLiquidityPool(null)}
-                    className="text-xs" style={{ color: 'var(--nexora-text-muted)' }}
+                    className="text-xs p-1" style={{ color: 'var(--nexora-text-muted)' }}
                   >
                     ✕
                   </button>
@@ -245,16 +258,29 @@ export default function EarnPage() {
                   </div>
 
                   <div>
-                    <label className="text-xs mb-1 block" style={{ color: 'var(--nexora-text-muted)' }}>
-                      {addLiquidityPool.token0.symbol} Amount
-                    </label>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="text-xs" style={{ color: 'var(--nexora-text-muted)' }}>
+                        {addLiquidityPool.token0.symbol} Amount
+                      </label>
+                      <button
+                        onClick={() => {
+                          setAmount0(bal0.toFixed(4));
+                          const p0 = addLiquidityPool.token0.currentPrice;
+                          const p1 = addLiquidityPool.token1.currentPrice;
+                          if (p1 > 0) setAmount1(((bal0 * p0) / p1).toFixed(4));
+                        }}
+                        className="text-xs font-mono"
+                        style={{ color: 'var(--nexora-blue)' }}
+                      >
+                        Bal: {bal0.toFixed(2)} (MAX)
+                      </button>
+                    </div>
                     <input
                       type="number"
                       placeholder="0.00"
                       value={amount0}
                       onChange={e => {
                         setAmount0(e.target.value);
-                        // Auto-calculate ratio
                         const p0 = addLiquidityPool.token0.currentPrice;
                         const p1 = addLiquidityPool.token1.currentPrice;
                         if (e.target.value && p1 > 0) {
@@ -264,10 +290,20 @@ export default function EarnPage() {
                       className="nx-input w-full px-3 py-2.5 text-sm font-mono"
                     />
                   </div>
+
                   <div>
-                    <label className="text-xs mb-1 block" style={{ color: 'var(--nexora-text-muted)' }}>
-                      {addLiquidityPool.token1.symbol} Amount
-                    </label>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="text-xs" style={{ color: 'var(--nexora-text-muted)' }}>
+                        {addLiquidityPool.token1.symbol} Amount
+                      </label>
+                      <button
+                        onClick={() => setAmount1(bal1.toFixed(4))}
+                        className="text-xs font-mono"
+                        style={{ color: 'var(--nexora-blue)' }}
+                      >
+                        Bal: {bal1.toFixed(2)} (MAX)
+                      </button>
+                    </div>
                     <input
                       type="number"
                       placeholder="0.00"
@@ -278,10 +314,10 @@ export default function EarnPage() {
                   </div>
 
                   {amount0 && amount1 && (
-                    <div className="rounded-lg p-3 text-xs" style={{ backgroundColor: 'var(--nexora-surface-2)' }}>
+                    <div className="rounded-lg p-3 text-xs space-y-1.5" style={{ backgroundColor: 'var(--nexora-surface-2)' }}>
                       <KpiRow
-                        label="Est. LP Tokens"
-                        value={<span className="font-mono">{(Math.sqrt(parseFloat(amount0) * parseFloat(amount1))).toFixed(6)}</span>}
+                        label="Est. Deposit Value"
+                        value={<span className="font-mono">{formatUSD(totalValueUSD)}</span>}
                       />
                       <KpiRow
                         label="Pool Share"
@@ -289,18 +325,22 @@ export default function EarnPage() {
                       />
                       <KpiRow
                         label="Estimated APR"
-                        value={<span className="font-mono" style={{ color: 'var(--nexora-green)' }}>{addLiquidityPool.apr.toFixed(1)}%</span>}
+                        value={<span className="font-mono font-semibold" style={{ color: 'var(--nexora-green)' }}>{addLiquidityPool.apr.toFixed(1)}%</span>}
                       />
                     </div>
                   )}
 
-                  {isConnected ? (
-                    <button className="btn-primary w-full py-3 text-sm">
-                      Confirm & Add Liquidity
-                    </button>
-                  ) : (
-                    <WalletButton />
-                  )}
+                  <button
+                    onClick={handleConfirmLiquidity}
+                    disabled={!amount0 || !amount1 || parseFloat(amount0) <= 0 || isInsufficient}
+                    className={`btn-primary w-full py-3 text-sm ${isInsufficient ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    {isInsufficient
+                      ? 'Insufficient token balance'
+                      : !amount0 || !amount1
+                      ? 'Enter deposit amounts'
+                      : 'Confirm & Add Liquidity'}
+                  </button>
                 </div>
               </motion.div>
             ) : (
@@ -309,14 +349,27 @@ export default function EarnPage() {
                 style={{ backgroundColor: 'var(--nexora-surface)', border: '1px solid var(--nexora-border)' }}
               >
                 <Wallet size={32} className="mx-auto mb-3" style={{ color: 'var(--nexora-text-subtle)' }} />
-                <p className="text-sm" style={{ color: 'var(--nexora-text-muted)' }}>
-                  Select a pool to add liquidity
+                <p className="text-sm font-medium" style={{ color: 'var(--nexora-text)' }}>
+                  Select a Pool
+                </p>
+                <p className="text-xs mt-1" style={{ color: 'var(--nexora-text-muted)' }}>
+                  Click any market opportunity to deposit paired liquidity and earn trading fees.
                 </p>
               </div>
             )}
           </div>
         </div>
       </div>
+
+      <TransactionStatus state={txState} onDismiss={() => setTxState({ status: 'idle' })} />
     </div>
+  );
+}
+
+export default function EarnPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen py-10 px-4 text-center text-sm text-nexora-muted">Loading earn opportunities...</div>}>
+      <EarnContent />
+    </Suspense>
   );
 }

@@ -1,25 +1,26 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronUp, ChevronDown, Filter } from 'lucide-react';
-import type { Pool, PoolType } from '@nexora/shared';
+import { motion } from 'framer-motion';
+import Link from 'next/link';
+import type { Pool, Asset } from '@nexora/shared';
 import { getMarkets } from '@nexora/sdk';
 import { AssetIcon } from '@/components/ui/AssetIcon';
 import { PoolTypeBadge, CorrelationBadge, RiskBadge } from '@/components/ui/Badges';
-import { formatUSD, formatPercent } from '@/lib/utils';
-import Link from 'next/link';
+import { formatUSD } from '@/lib/utils';
+import { ChevronUp, ChevronDown, Plus, ArrowRight } from 'lucide-react';
+import { useHaydenStore } from '@/lib/store';
 
-type SortKey = 'tvl' | 'volume24h' | 'apr' | 'fees24h' | 'correlation';
+type SortKey = 'tvl' | 'volume24h' | 'fees24h' | 'apr' | 'correlation';
 type SortDir = 'asc' | 'desc';
 
 const FILTER_TABS = [
-  { key: 'ALL',        label: 'All' },
-  { key: 'STOCK',      label: 'Stocks' },
-  { key: 'ETF',        label: 'ETFs' },
-  { key: 'CRYPTO',     label: 'Crypto' },
+  { key: 'ALL',        label: 'All Markets' },
   { key: 'CORRELATED', label: 'Correlated' },
-  { key: 'BRIDGE',     label: 'Bridge' },
+  { key: 'BRIDGE',     label: 'Bridge / USD' },
+  { key: 'STOCK',      label: 'Tokenized Stocks' },
+  { key: 'ETF',        label: 'Tokenized ETFs' },
+  { key: 'CRYPTO',     label: 'Crypto' },
 ];
 
 function PoolRow({ pool }: { pool: Pool }) {
@@ -27,7 +28,7 @@ function PoolRow({ pool }: { pool: Pool }) {
     <motion.tr
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="group cursor-pointer"
+      className="group hover:bg-nexora-surface-2 transition-colors"
     >
       <td className="px-4 py-3">
         <div className="flex items-center gap-3">
@@ -76,11 +77,36 @@ function PoolRow({ pool }: { pool: Pool }) {
         </span>
       </td>
       <td className="px-4 py-3"><RiskBadge risk={pool.riskLevel} /></td>
+      <td className="px-4 py-3">
+        <div className="flex items-center gap-1.5">
+          <Link
+            href={`/trade?in=${pool.token0.symbol}&out=${pool.token1.symbol}`}
+            className="text-xs px-2.5 py-1 rounded font-medium transition-colors"
+            style={{
+              backgroundColor: 'rgba(79,142,247,0.1)',
+              color: 'var(--nexora-blue)',
+            }}
+          >
+            Trade
+          </Link>
+          <Link
+            href={`/earn?pool=${pool.id}`}
+            className="text-xs px-2.5 py-1 rounded font-medium transition-colors"
+            style={{
+              backgroundColor: 'rgba(0,212,170,0.1)',
+              color: 'var(--nexora-green)',
+            }}
+          >
+            Deposit
+          </Link>
+        </div>
+      </td>
     </motion.tr>
   );
 }
 
 export default function MarketsPage() {
+  const { customPools } = useHaydenStore();
   const [pools, setPools] = useState<Pool[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState('ALL');
@@ -88,8 +114,13 @@ export default function MarketsPage() {
   const [sortDir, setSortDir] = useState<SortDir>('desc');
 
   useEffect(() => {
-    getMarkets().then(m => { setPools(m); setLoading(false); });
-  }, []);
+    getMarkets().then(m => {
+      const existingIds = new Set(m.map(p => p.id));
+      const merged = [...customPools.filter(p => !existingIds.has(p.id)), ...m];
+      setPools(merged);
+      setLoading(false);
+    });
+  }, [customPools]);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
@@ -108,35 +139,30 @@ export default function MarketsPage() {
     if (sortKey === 'correlation') {
       return ((a.correlation ?? -1) - (b.correlation ?? -1)) * mult;
     }
-    return ((a[sortKey] as number) - (b[sortKey] as number)) * mult;
+    return ((a[sortKey] ?? 0) - (b[sortKey] ?? 0)) * mult;
   });
-
-  const SortHeader = ({ label, sKey }: { label: string; sKey: SortKey }) => (
-    <th className="nx-table th" onClick={() => handleSort(sKey)} style={{ cursor: 'pointer' }}>
-      <div className="flex items-center gap-1">
-        {label}
-        {sortKey === sKey && (sortDir === 'asc' ? <ChevronUp size={10} /> : <ChevronDown size={10} />)}
-      </div>
-    </th>
-  );
 
   return (
     <div className="min-h-screen py-10 px-4">
       <div className="max-w-screen-xl mx-auto">
         {/* Header */}
-        <div className="flex items-start justify-between mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--nexora-text)' }}>Markets</h1>
             <p className="text-sm" style={{ color: 'var(--nexora-text-muted)' }}>
-              {pools.length} liquidity pools · {pools.filter(p => p.poolType === 'CORRELATED').length} correlated
+              Correlated-pair and bridge liquidity pools with real-time statistics.
             </p>
           </div>
-          <Link href="/markets/network" className="btn-ghost flex items-center gap-2 text-sm">
-            Network Graph →
+          <Link
+            href="/create-pool"
+            className="btn-primary flex items-center gap-1.5 self-start sm:self-auto text-sm px-4 py-2"
+          >
+            <Plus size={14} />
+            Create Pool
           </Link>
         </div>
 
-        {/* Filters */}
+        {/* Filter tabs */}
         <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-2">
           {FILTER_TABS.map(tab => (
             <button
@@ -169,6 +195,7 @@ export default function MarketsPage() {
                     { l: '24H Fees', k: 'fees24h' as SortKey },
                     { l: 'APR', k: 'apr' as SortKey },
                     { l: 'Risk', k: null },
+                    { l: 'Actions', k: null },
                   ].map(({ l, k }) => (
                     <th
                       key={l}
@@ -194,7 +221,7 @@ export default function MarketsPage() {
                 {loading
                   ? Array.from({ length: 6 }).map((_, i) => (
                       <tr key={i}>
-                        {Array.from({ length: 8 }).map((_, j) => (
+                        {Array.from({ length: 9 }).map((_, j) => (
                           <td key={j} className="px-4 py-3">
                             <div className="skeleton h-4 rounded" style={{ width: j === 0 ? 120 : 60 }} />
                           </td>

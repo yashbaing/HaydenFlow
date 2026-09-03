@@ -1,21 +1,23 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import type { Pool, Asset, CorrelationResult } from '@nexora/shared';
-import { getMarkets, buildAssets, getCorrelation } from '@nexora/sdk';
+import type { Pool, Asset, CorrelationResult, TxState } from '@nexora/shared';
+import { buildAssets, getCorrelation } from '@nexora/sdk';
 import { suggestFeeTier, estimateLpRisk } from '@nexora/sdk';
 import { AssetIcon } from '@/components/ui/AssetIcon';
 import { PoolTypeBadge, CorrelationBadge, RiskBadge } from '@/components/ui/Badges';
 import { TokenSelectModal } from '@/components/ui/TokenSelectModal';
-import { KpiRow } from '@/components/ui/KpiCard';
+import { TransactionStatus } from '@/components/ui/TransactionStatus';
 import { formatUSD } from '@/lib/utils';
-import { useAccount } from 'wagmi';
-import { WalletButton } from '@/components/layout/WalletButton';
-import { TrendingUp, AlertTriangle } from 'lucide-react';
+import { useHaydenStore } from '@/lib/store';
+import { AlertTriangle, CheckCircle, ArrowRight } from 'lucide-react';
 
 export default function CreatePoolPage() {
-  const { isConnected } = useAccount();
+  const router = useRouter();
+  const { getBalance, createPool } = useHaydenStore();
+
   const [assets, setAssets] = useState<Asset[]>([]);
   const [asset0, setAsset0] = useState<Asset | undefined>();
   const [asset1, setAsset1] = useState<Asset | undefined>();
@@ -23,6 +25,8 @@ export default function CreatePoolPage() {
   const [loading, setLoading] = useState(false);
   const [amount0, setAmount0] = useState('');
   const [amount1, setAmount1] = useState('');
+  const [txState, setTxState] = useState<TxState>({ status: 'idle' });
+  const [createdPoolId, setCreatedPoolId] = useState<string | null>(null);
 
   useEffect(() => {
     const all = buildAssets();
@@ -45,11 +49,63 @@ export default function CreatePoolPage() {
 
   const poolType = correlation
     ? (Math.abs(correlation.correlation) >= 0.75 ? 'CORRELATED' : 'BRIDGE')
-    : null;
+    : 'CORRELATED';
+
+  const bal0 = asset0 ? getBalance(asset0.symbol) : 0;
+  const bal1 = asset1 ? getBalance(asset1.symbol) : 0;
 
   const totalValueUSD =
     (parseFloat(amount0 || '0') * (asset0?.currentPrice ?? 0)) +
     (parseFloat(amount1 || '0') * (asset1?.currentPrice ?? 0));
+
+  const isInsufficient =
+    parseFloat(amount0 || '0') > bal0 || parseFloat(amount1 || '0') > bal1;
+
+  const handleCreatePool = () => {
+    if (!asset0 || !asset1 || !amount0 || !amount1 || isInsufficient) return;
+
+    setTxState({ status: 'awaiting_wallet' });
+
+    const newPoolId = `pool-${asset0.symbol.toLowerCase()}-${asset1.symbol.toLowerCase()}-${Date.now().toString().slice(-4)}`;
+    const hash = '0x' + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+
+    setTimeout(() => {
+      setTxState({ status: 'pending', hash });
+    }, 800);
+
+    setTimeout(() => {
+      const amt0Num = parseFloat(amount0);
+      const amt1Num = parseFloat(amount1);
+
+      const newPool: Pool = {
+        id: newPoolId,
+        poolId: '0x' + Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join(''),
+        token0: asset0,
+        token1: asset1,
+        poolType: poolType as any,
+        feeBps: feeTier ? feeTier.feeBps : 10,
+        tvl: totalValueUSD,
+        volume24h: 15400,
+        volume7d: 107800,
+        fees24h: 46.2,
+        apr: feeTier && feeTier.feeBps <= 10 ? 26.5 : 18.2,
+        correlation: correlation ? correlation.correlation : 0.82,
+        correlationClassification: correlation ? correlation.classification : 'HIGH',
+        riskLevel: riskLevel ? (riskLevel as any) : 'LOW',
+        reserve0: BigInt(Math.floor(amt0Num * 10 ** asset0.decimals)),
+        reserve1: BigInt(Math.floor(amt1Num * 10 ** asset1.decimals)),
+        totalLpTokens: BigInt(Math.floor(Math.sqrt(amt0Num * amt1Num) * 1e18)),
+        active: true,
+        createdAt: new Date(),
+      };
+
+      createPool(newPool, amt0Num, amt1Num, totalValueUSD);
+      setTxState({ status: 'confirmed', hash });
+      setCreatedPoolId(newPoolId);
+      setAmount0('');
+      setAmount1('');
+    }, 2200);
+  };
 
   return (
     <div className="min-h-screen py-10 px-4">
@@ -57,9 +113,37 @@ export default function CreatePoolPage() {
         <div className="mb-8">
           <h1 className="text-2xl font-bold mb-1" style={{ color: 'var(--nexora-text)' }}>Create Pool</h1>
           <p className="text-sm" style={{ color: 'var(--nexora-text-muted)' }}>
-            Create a new correlated-pair liquidity pool.
+            Create a new correlated-pair liquidity pool and seed initial liquidity.
           </p>
         </div>
+
+        {createdPoolId && (
+          <div
+            className="rounded-xl p-5 mb-6 flex items-center justify-between"
+            style={{
+              backgroundColor: 'rgba(0, 212, 170, 0.08)',
+              border: '1px solid rgba(0, 212, 170, 0.3)',
+            }}
+          >
+            <div className="flex items-center gap-3">
+              <CheckCircle size={22} style={{ color: 'var(--nexora-green)' }} />
+              <div>
+                <div className="font-semibold text-sm" style={{ color: 'var(--nexora-text)' }}>
+                  Pool Successfully Deployed!
+                </div>
+                <div className="text-xs mt-0.5" style={{ color: 'var(--nexora-text-muted)' }}>
+                  Liquidity is now active and routing trades on HaydenFlow.
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={() => router.push(`/trade?in=${asset0?.symbol}&out=${asset1?.symbol}`)}
+              className="btn-primary text-xs flex items-center gap-1 px-4 py-2"
+            >
+              Trade Pool <ArrowRight size={13} />
+            </button>
+          </div>
+        )}
 
         <div
           className="rounded-xl overflow-hidden"
@@ -94,13 +178,11 @@ export default function CreatePoolPage() {
               </div>
             </div>
 
-            <div className="nx-divider" />
-
             {/* Correlation analysis */}
             {asset0 && asset1 && (
               <div>
                 <h2 className="text-sm font-semibold mb-3 uppercase tracking-wider" style={{ color: 'var(--nexora-text-subtle)' }}>
-                  Correlation Analysis
+                  Correlation Intelligence
                 </h2>
 
                 {loading ? (
@@ -159,22 +241,11 @@ export default function CreatePoolPage() {
                       </div>
                       <div className="relative h-2 rounded-full" style={{ backgroundColor: 'var(--nexora-surface-2)' }}>
                         <div
-                          className="absolute h-2 rounded-full transition-all"
+                          className="absolute top-0 bottom-0 rounded-full"
                           style={{
-                            left: '50%',
-                            width: `${Math.abs(correlation.correlation) * 50}%`,
-                            transform: correlation.correlation >= 0 ? 'none' : 'translateX(-100%)',
-                            backgroundColor: Math.abs(correlation.correlation) >= 0.75 ? 'var(--nexora-green)' : Math.abs(correlation.correlation) >= 0.5 ? 'var(--nexora-amber)' : 'var(--nexora-red)',
-                          }}
-                        />
-                        {/* Marker */}
-                        <div
-                          className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border-2 transition-all"
-                          style={{
-                            left: `${(correlation.correlation + 1) / 2 * 100}%`,
-                            transform: 'translate(-50%, -50%)',
-                            backgroundColor: 'var(--nexora-text)',
-                            borderColor: 'var(--nexora-bg)',
+                            left: `${Math.max(0, ((correlation.correlation + 1) / 2) * 100 - 2)}%`,
+                            width: '4%',
+                            backgroundColor: 'var(--nexora-blue)',
                           }}
                         />
                       </div>
@@ -195,13 +266,27 @@ export default function CreatePoolPage() {
                 {/* Initial liquidity */}
                 <div>
                   <h2 className="text-sm font-semibold mb-3 uppercase tracking-wider" style={{ color: 'var(--nexora-text-subtle)' }}>
-                    Initial Liquidity
+                    Initial Liquidity Deposit
                   </h2>
                   <div className="space-y-3">
                     <div>
-                      <label className="text-xs mb-1 block" style={{ color: 'var(--nexora-text-muted)' }}>
-                        {asset0.symbol} Amount
-                      </label>
+                      <div className="flex justify-between items-center mb-1">
+                        <label className="text-xs" style={{ color: 'var(--nexora-text-muted)' }}>
+                          {asset0.symbol} Amount
+                        </label>
+                        <button
+                          onClick={() => {
+                            setAmount0(bal0.toFixed(4));
+                            if (asset1.currentPrice > 0) {
+                              setAmount1(((bal0 * asset0.currentPrice) / asset1.currentPrice).toFixed(4));
+                            }
+                          }}
+                          className="text-xs font-mono"
+                          style={{ color: 'var(--nexora-blue)' }}
+                        >
+                          Bal: {bal0.toFixed(2)} (MAX)
+                        </button>
+                      </div>
                       <input
                         type="number"
                         placeholder="0.00"
@@ -218,10 +303,20 @@ export default function CreatePoolPage() {
                         ≈ ${(parseFloat(amount0 || '0') * asset0.currentPrice).toFixed(2)}
                       </div>
                     </div>
+
                     <div>
-                      <label className="text-xs mb-1 block" style={{ color: 'var(--nexora-text-muted)' }}>
-                        {asset1.symbol} Amount
-                      </label>
+                      <div className="flex justify-between items-center mb-1">
+                        <label className="text-xs" style={{ color: 'var(--nexora-text-muted)' }}>
+                          {asset1.symbol} Amount
+                        </label>
+                        <button
+                          onClick={() => setAmount1(bal1.toFixed(4))}
+                          className="text-xs font-mono"
+                          style={{ color: 'var(--nexora-blue)' }}
+                        >
+                          Bal: {bal1.toFixed(2)} (MAX)
+                        </button>
+                      </div>
                       <input
                         type="number"
                         placeholder="0.00"
@@ -236,9 +331,9 @@ export default function CreatePoolPage() {
                   </div>
 
                   {totalValueUSD > 0 && (
-                    <div className="mt-3 px-3 py-2 rounded-lg text-xs font-mono" style={{ backgroundColor: 'var(--nexora-surface-2)' }}>
+                    <div className="mt-3 text-right text-sm">
                       <span style={{ color: 'var(--nexora-text-muted)' }}>Total deposit value: </span>
-                      <span style={{ color: 'var(--nexora-text)' }}>{formatUSD(totalValueUSD)}</span>
+                      <span className="font-bold font-mono" style={{ color: 'var(--nexora-text)' }}>{formatUSD(totalValueUSD)}</span>
                     </div>
                   )}
                 </div>
@@ -248,26 +343,29 @@ export default function CreatePoolPage() {
                   <div className="flex items-start gap-2 p-3 rounded-lg text-xs" style={{ backgroundColor: 'rgba(242,87,87,0.08)', border: '1px solid rgba(242,87,87,0.25)' }}>
                     <AlertTriangle size={13} className="mt-0.5 shrink-0" style={{ color: 'var(--nexora-red)' }} />
                     <span style={{ color: 'var(--nexora-red)' }}>
-                      Low correlation ({(Math.abs(correlation.correlation) * 100).toFixed(0)}%). This pair has high relative volatility and LP positions may experience significant impermanent loss.
+                      Low correlation ({(Math.abs(correlation.correlation) * 100).toFixed(0)}%). This pair has higher relative volatility and LP positions may experience impermanent loss.
                     </span>
                   </div>
                 )}
 
-                {isConnected ? (
-                  <button
-                    disabled={!amount0 || !amount1 || parseFloat(amount0) === 0}
-                    className="btn-primary w-full py-4 text-sm"
-                  >
-                    Create Pool & Add Liquidity
-                  </button>
-                ) : (
-                  <WalletButton />
-                )}
+                <button
+                  onClick={handleCreatePool}
+                  disabled={!amount0 || !amount1 || parseFloat(amount0) <= 0 || isInsufficient}
+                  className={`btn-primary w-full py-4 text-sm font-semibold ${isInsufficient ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  {isInsufficient
+                    ? 'Insufficient token balance'
+                    : !amount0 || !amount1
+                    ? 'Enter initial deposit amounts'
+                    : 'Create Pool & Add Liquidity'}
+                </button>
               </>
             )}
           </div>
         </div>
       </div>
+
+      <TransactionStatus state={txState} onDismiss={() => setTxState({ status: 'idle' })} />
     </div>
   );
 }
