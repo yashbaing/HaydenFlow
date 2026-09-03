@@ -24,10 +24,12 @@
     "contracts:test": "cd packages/contracts && forge test -vvv",
     "contracts:deploy": "cd packages/contracts && forge script script/Deploy.s.sol --broadcast"
   },
-  "devDependencies": {
+  "dependencies": {
     "next": "16.3.4",
     "react": "19.2.8",
-    "react-dom": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
     "turbo": "^2.0.0",
     "typescript": "^5.4.5",
     "prettier": "^3.2.5",
